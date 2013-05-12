@@ -1,216 +1,139 @@
 package com.mclinic.view.sample.activities;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-
-import android.app.AlertDialog;
-import android.app.Dialog;
 import android.app.ListActivity;
-import android.app.ProgressDialog;
-import android.content.ActivityNotFoundException;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.text.method.TextKeyListener;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.View.OnLongClickListener;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.burkeware.search.api.Context;
-import com.mclinic.api.model.Cohort;
+import com.mclinic.api.context.Context;
+import com.mclinic.api.context.ContextFactory;
 import com.mclinic.api.model.Patient;
-import com.mclinic.api.module.MclinicAPIModule;
-import com.mclinic.api.service.AdministrativeService;
-import com.mclinic.api.service.CohortService;
 import com.mclinic.api.service.PatientService;
+import com.mclinic.search.api.util.StringUtil;
+import com.mclinic.util.Constants;
 import com.mclinic.view.sample.R;
 import com.mclinic.view.sample.adapters.PatientAdapter;
-import com.mclinic.view.sample.listeners.DownloadListener;
-import com.mclinic.view.sample.tasks.DownloadCohortTask;
 import com.mclinic.view.sample.tasks.DownloadPatientTask;
 import com.mclinic.view.sample.tasks.DownloadTask;
-import com.mclinic.view.sample.utilities.Constants;
+import com.mclinic.view.sample.utilities.StringConstants;
 import com.mclinic.view.sample.utilities.FileUtils;
+import org.apache.lucene.queryParser.ParseException;
 
-public class ListPatientActivity extends ListActivity implements DownloadListener{
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-    // Menu ID's
+public class ListPatientActivity extends ListActivity {
+
+    private static final String TAG = ListPatientActivity.class.getSimpleName();
+
     private static final int MENU_PREFERENCES = Menu.FIRST;
-    private static final int MENU_GET_FORMS = Menu.FIRST + 1;
-
-    // Request codes
-    public static final int DOWNLOAD_PATIENT = 1;
-    public static final int BARCODE_CAPTURE = 2;
-    public static final int SEARCH_PATIENT = 3;
-    
-	private final static int COHORT_DIALOG = 1;
-	private final static int COHORTS_PROGRESS_DIALOG = 2;
-	private final static int PATIENTS_PROGRESS_DIALOG = 3;
-	
-	private AlertDialog mCohortDialog;
-	private ProgressDialog mProgressDialog;
-	
-	private DownloadTask mDownloadTask;
-	
-	private Integer cohortPos;
-	
-	private ArrayList<Cohort> mCohorts = new ArrayList<Cohort>();
-
 
     private static final String DOWNLOAD_PATIENT_CANCELED_KEY = "downloadPatientCanceled";
 
-    private ImageButton mDownloadButton;
-    private ImageButton mSearchButton;
-    private ImageButton mBarcodeButton;
-    private Button mNewPatientButton;
-    private Button mFilledFormsButton;
-    private EditText mSearchText;
-    private TextWatcher mFilterTextWatcher;
+    public static final int BARCODE_CAPTURE = 2;
 
-    private ArrayAdapter<Patient> mPatientAdapter;
-    private ArrayList<Patient> mPatients = new ArrayList<Patient>();
-    private boolean mDownloadPatientCanceled = false;
-    
+    public static final int DOWNLOAD_PATIENT = 1;
+
+    private EditText editText;
+
+    private TextWatcher textWatcher;
+
+    private ArrayAdapter<Patient> patientAdapter;
+
+    private boolean downloadCanceled = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.list_patients);
+
+        setListAdapter(patientAdapter);
 
         if (savedInstanceState != null) {
             if (savedInstanceState.containsKey(DOWNLOAD_PATIENT_CANCELED_KEY)) {
-                mDownloadPatientCanceled = savedInstanceState.getBoolean(DOWNLOAD_PATIENT_CANCELED_KEY);
+                downloadCanceled = savedInstanceState.getBoolean(DOWNLOAD_PATIENT_CANCELED_KEY);
             }
         }
 
-        setContentView(R.layout.list_patients);
+        setTitle(getString(R.string.app_name) + " > " + getString(R.string.find_patient));
 
         if (!FileUtils.storageReady()) {
-            showCustomToast(getString(R.string.error_storage));
+            showCustomToast(getString(R.string.error, getString(R.string.storage_error)));
             finish();
         }
 
-        mFilterTextWatcher = new TextWatcher() {
+        textWatcher = new TextWatcher() {
+
             @Override
-            public void onTextChanged(CharSequence s, int start, int before,
-                                      int count) {
-                if (mPatientAdapter != null) {
-                    mPatientAdapter.getFilter().filter(s);
-                }
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                getPatients(s.toString());
             }
 
             @Override
             public void afterTextChanged(Editable s) {
-
             }
 
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count,
-                                          int after) {
-
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             }
         };
 
-        mSearchText = (EditText) findViewById(R.id.search_text);
-        mSearchText.addTextChangedListener(mFilterTextWatcher);
+        editText = (EditText) findViewById(R.id.search_text);
+        editText.addTextChangedListener(textWatcher);
 
-        mBarcodeButton = (ImageButton) findViewById(R.id.barcode_button);
-        mBarcodeButton.setOnClickListener(new OnClickListener() {
+        final ProgressBar progressBar = (ProgressBar) findViewById(R.id.progress_bar);
+        progressBar.setVisibility(ProgressBar.INVISIBLE);
+
+        ImageButton downloadButton = (ImageButton) findViewById(R.id.download_patients);
+        downloadButton.setOnClickListener(new OnClickListener() {
+
             public void onClick(View v) {
-                Intent i = new Intent("com.google.zxing.client.android.SCAN");
-                try {
-                    startActivityForResult(i, BARCODE_CAPTURE);
-                } catch (ActivityNotFoundException e) {
-                    Toast t = Toast.makeText(getApplicationContext(), getString(R.string.barcode_error), Toast.LENGTH_LONG);
-                    t.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
-                    t.show();
-                }
+                SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+                String server = settings.getString(
+                        PreferencesActivity.KEY_SERVER, getString(R.string.default_server));
+                String username = settings.getString(
+                        PreferencesActivity.KEY_USERNAME, getString(R.string.default_username));
+                String password = settings.getString(
+                        PreferencesActivity.KEY_PASSWORD, getString(R.string.default_password));
+                DownloadTask downloadTask = new DownloadPatientTask(progressBar);
+                downloadTask.execute(username, password, server);
             }
         });
-
-        mNewPatientButton = (Button) findViewById(R.id.create_patient);
-        mNewPatientButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                Intent in = new Intent(getApplicationContext(), CreatePatientActivity.class);
-                startActivity(in);
-            }
-        });
-
-        mFilledFormsButton = (Button) findViewById(R.id.filled_forms);
-        mFilledFormsButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                Intent iu = new Intent(getApplicationContext(), InstanceListActivity.class);
-                startActivity(iu);
-            }
-        });
-
-        mDownloadButton = (ImageButton) findViewById(R.id.download_patients);
-        mDownloadButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-//                Intent id = new Intent(getApplicationContext(), DownloadPatientActivity.class);
-//                startActivityForResult(id, DOWNLOAD_PATIENT);
-            }
-        });
-
-        mDownloadButton.setOnLongClickListener(new OnLongClickListener() {
-            public boolean onLongClick(View v) {
-                downloadCohorts();
-                return true;
-            }
-        });
-
-        mSearchButton = (ImageButton) findViewById(R.id.search_patient);
-        mSearchButton.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                Intent is = new Intent(getApplicationContext(), SearchPatientActivity.class);
-                is.putExtra("searchText", mSearchText.getText().toString());
-                startActivityForResult(is, SEARCH_PATIENT);
-
-                //and hide that keyboard
-                InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                imm.hideSoftInputFromWindow(mSearchText.getWindowToken(), 0);
-            }
-        });
-
     }
 
     @Override
-    protected void onListItemClick(ListView listView, View view, int position,
-                                   long id) {
+    protected void onListItemClick(ListView listView, View view, int position, long id) {
         // Get selected patient
-        Patient p = (Patient) getListAdapter().getItem(position);
-        String patientIdStr = p.getUuid();
+        Patient patient = (Patient) getListAdapter().getItem(position);
+        String patientUuid = patient.getUuid();
 
-        Intent ip = new Intent(getApplicationContext(),ViewPatientActivity.class);
-        ip.putExtra(Constants.KEY_PATIENT_ID, patientIdStr);
+        Intent ip = new Intent(getApplicationContext(), ViewPatientActivity.class);
+        ip.putExtra(StringConstants.KEY_PATIENT_ID, patientUuid);
         startActivity(ip);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
-        menu.add(0, MENU_PREFERENCES, 0, getString(R.string.server_preferences))
-                .setIcon(android.R.drawable.ic_menu_preferences);
-        menu.add(0, MENU_GET_FORMS, 0, getString(R.string.openmrs_forms))
-                .setIcon(R.drawable.openmrs);
+        menu.add(0, MENU_PREFERENCES, 0,
+                getString(R.string.server_preferences)).setIcon(android.R.drawable.ic_menu_preferences);
         return true;
     }
 
@@ -221,10 +144,6 @@ public class ListPatientActivity extends ListActivity implements DownloadListene
                 Intent ip = new Intent(getApplicationContext(), PreferencesActivity.class);
                 startActivity(ip);
                 return true;
-            case MENU_GET_FORMS:
-                Intent in = new Intent(getApplicationContext(), ListFormActivity.class);
-                startActivity(in);
-                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -232,14 +151,10 @@ public class ListPatientActivity extends ListActivity implements DownloadListene
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        if (requestCode == SEARCH_PATIENT) {
-            TextKeyListener.clear(mSearchText.getText());
-            return;
-        }
 
         if (resultCode == RESULT_CANCELED) {
             if (requestCode == DOWNLOAD_PATIENT) {
-                mDownloadPatientCanceled = true;
+                downloadCanceled = true;
             }
             return;
         }
@@ -247,89 +162,90 @@ public class ListPatientActivity extends ListActivity implements DownloadListene
         if (requestCode == BARCODE_CAPTURE && intent != null) {
             String sb = intent.getStringExtra("SCAN_RESULT");
             if (sb != null && sb.length() > 0) {
-                mSearchText.setText(sb);
+                editText.setText(sb);
             }
         }
         super.onActivityResult(requestCode, resultCode, intent);
 
     }
 
-    private void getPatients() {
-    	
-        PatientService pService =Context.getInstance(PatientService.class);
-        
-    	List<Patient> patients = pService.getAllPatients();
-    	mPatients.clear();
-    	for (Patient patient : patients) {
-    		mPatients.add(patient);
+    private Context getContext() throws IOException {
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        String server = settings.getString(
+                PreferencesActivity.KEY_SERVER, getString(R.string.default_server));
+        String username = settings.getString(
+                PreferencesActivity.KEY_USERNAME, getString(R.string.default_username));
+        String password = settings.getString(
+                PreferencesActivity.KEY_PASSWORD, getString(R.string.default_password));
+        Context context = ContextFactory.createContext();
+
+        context.openSession();
+        try {
+            if (!context.isAuthenticated())
+                context.authenticate(username, password, server);
+        } catch (ParseException e) {
+            Log.e(TAG, "Unable to authenticate the current context.", e);
         }
 
-        Collections.sort(mPatients, new Comparator<Patient>() {
-            public int compare(Patient p1, Patient p2) {
-                return p1.getName().compareTo(p2.getName());
-            }
-        });
-
-        refreshView();
+        return context;
     }
 
-    private void refreshView() {
-        mPatientAdapter = new PatientAdapter(this, R.layout.patient_list_item, mPatients);
-        setListAdapter(mPatientAdapter);
-        setTitle(getString(R.string.app_name) + " > " + getString(R.string.list_patients)
-                + " (" + mPatients.size() + ")");
+    private void getPatients() {
+        getPatients(StringUtil.EMPTY);
+    }
+
+    private void getPatients(final String searchStr) {
+        List<Patient> patients = new ArrayList<Patient>();
+        try {
+            PatientService patientService = getContext().getPatientService();
+            patients = patientService.searchPatients(searchStr);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception when trying to load patient", e);
+        }
+        patientAdapter = new PatientAdapter(this, R.layout.patient_list_item, patients);
+        setListAdapter(patientAdapter);
     }
 
     @Override
     protected void onDestroy() {
-//        if (mUploadFormTask != null) {
-//            mUploadFormTask.setUploadListener(null);
-//            if (mUploadFormTask.getStatus() == AsyncTask.Status.FINISHED) {
-//                mUploadFormTask.cancel(true);
-//            }
-//        }
-
         super.onDestroy();
-        mSearchText.removeTextChangedListener(mFilterTextWatcher);
+        editText.removeTextChangedListener(textWatcher);
     }
 
     @Override
     protected void onResume() {
-//        if (mUploadFormTask != null) {
-//            mUploadFormTask.setUploadListener(this);
-//        }
         super.onResume();
-
+        ContextFactory.setProperty(Constants.LUCENE_DIRECTORY_NAME, "/mnt/sdcard/muzima");
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-		String server = settings.getString(
-		        PreferencesActivity.KEY_SERVER, getString(R.string.default_server));
-		String username = settings.getString(
-		        PreferencesActivity.KEY_USERNAME, getString(R.string.default_username));
-		String password = settings.getString(
-		        PreferencesActivity.KEY_PASSWORD, getString(R.string.default_password));
+        boolean firstRun = settings.getBoolean(PreferencesActivity.KEY_FIRST_RUN, true);
 
-		MclinicAPIModule apiModule = new MclinicAPIModule("/mnt/sdcard/lucene" ,"uuid");
-		apiModule.setServer(server);
-		apiModule.setUsername(username);
-		apiModule.setPassword(password);
-		Context.initialize(apiModule);
-		AdministrativeService adminService= Context.getInstance(AdministrativeService.class);
-		adminService.initializeDB(new File("/mnt/sdcard/j2l"));
+        if (firstRun) {
+            // Save first run status
+            SharedPreferences.Editor editor = settings.edit();
+            editor.putBoolean(PreferencesActivity.KEY_FIRST_RUN, false);
+            editor.commit();
 
-		getPatients();
-		mSearchText.setText(mSearchText.getText().toString());
+            // Start preferences activity
+            Intent ip = new Intent(getApplicationContext(), PreferencesActivity.class);
+            startActivity(ip);
+
+        } else {
+            getPatients();
+            editText.setText(editText.getText().toString());
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        outState.putBoolean(DOWNLOAD_PATIENT_CANCELED_KEY, mDownloadPatientCanceled);
+        outState.putBoolean(DOWNLOAD_PATIENT_CANCELED_KEY, downloadCanceled);
     }
 
     private void showCustomToast(String message) {
@@ -346,165 +262,4 @@ public class ListPatientActivity extends ListActivity implements DownloadListene
         t.setGravity(Gravity.CENTER, 0, 0);
         t.show();
     }
-    
-    private void downloadCohorts() {
-				
-		// setup dialog and upload task
-		showDialog(COHORTS_PROGRESS_DIALOG);
-		mDownloadTask = new DownloadCohortTask();
-		mDownloadTask.setDownloadListener(this);
-		mDownloadTask.execute();
-	}
-    
-    private void downloadPatients(String cohortUUID) {
-		
-		// setup dialog and upload task
-		showDialog(PATIENTS_PROGRESS_DIALOG);
-		
-		System.out.println("dowloading" + cohortUUID);
-		mDownloadTask = new DownloadPatientTask();
-		mDownloadTask.setDownloadListener(this);
-		mDownloadTask.execute(cohortUUID);
-	}
-    
-    private class CohortDialogListener implements DialogInterface.OnClickListener, DialogInterface.OnCancelListener {
-
-		@Override
-		public void onClick(DialogInterface dialog, int which) {
-			if (which >= 0)
-				cohortPos=which;
-	        switch (which) {
-	            case DialogInterface.BUTTON_NEUTRAL: // refresh
-	                downloadCohorts();
-	                break;
-	            case DialogInterface.BUTTON_NEGATIVE: // cancel
-	                setResult(RESULT_CANCELED);
-	                dialog.dismiss();
-	                break;
-	            case DialogInterface.BUTTON_POSITIVE: // download
-	            	System.out.println(which);
-	            	System.out.println(mCohorts.size());
-	                downloadPatients(mCohorts.get(cohortPos).getUuid());
-	                break;
-	        }
-	}
-
-	@Override
-	public void onCancel(DialogInterface dialog) {
-	    setResult(RESULT_CANCELED);
-	    finish();
-	}
-}
-    
-	private AlertDialog createCohortDialog() {
-		
-		CohortDialogListener listener = new CohortDialogListener();
-		
-		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setTitle(getString(R.string.select_cohort));
-
-		if (!mCohorts.isEmpty()) {
-			
-			int selectedCohortIndex = -1;
-			String[] cohortNames = new String[mCohorts.size()];
-			for (int i = 0; i < mCohorts.size(); i++) {
-				Cohort c = mCohorts.get(i);
-				cohortNames[i] = c.getName();
-			}
-			builder.setSingleChoiceItems(cohortNames, selectedCohortIndex, listener);
-			builder.setPositiveButton(getString(R.string.download), listener);
-		} else {
-			builder.setMessage(getString(R.string.no_cohort));
-		}
-		builder.setNeutralButton(getString(R.string.refresh), listener);
-		builder.setNegativeButton(getString(R.string.cancel), listener);
-		builder.setOnCancelListener(listener);
-
-		return builder.create();
-	}
-    
-	@Override
-	protected Dialog onCreateDialog(int id) {
-		if (id == COHORT_DIALOG) {
-			mCohortDialog = createCohortDialog();
-			return mCohortDialog;
-		} else if (id == COHORTS_PROGRESS_DIALOG || id == PATIENTS_PROGRESS_DIALOG) {
-			mProgressDialog = createDownloadDialog();
-			return mProgressDialog;
-		}
-
-		return null;
-	}
-	
-	private ProgressDialog createDownloadDialog() {
-		
-		ProgressDialog dialog = new ProgressDialog(this);
-		DialogInterface.OnClickListener loadingButtonListener = new DialogInterface.OnClickListener() {
-			@Override
-			public void onClick(DialogInterface dialog, int which) {
-				dialog.dismiss();
-				mDownloadTask.setDownloadListener(null);
-				setResult(RESULT_CANCELED);
-				finish();
-			}
-		};
-		dialog.setTitle(getString(R.string.downloading));
-		dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-		dialog.setIndeterminate(false);
-		dialog.setCancelable(false);
-		dialog.setButton(getString(R.string.cancel_download),loadingButtonListener);
-		
-		return dialog;
-	}
-	
-	private void getCohorts() {
-
-		CohortService cService = Context.getInstance(CohortService.class);
-		List<Cohort> cohorts = cService.getAllCohorts();
-		if (cohorts==null)
-			System.out.println("couldnt fetch cohorts");
-		else {
-			mCohorts.clear();
-			for (Cohort cohort : cohorts) {
-				mCohorts.add(cohort);
-			}
-		}
-	}
-	
-	@Override
-	public void taskComplete(String result) {
-		if (mProgressDialog != null)
-			mProgressDialog.dismiss();
-		
-		if (result != null) {
-			showCustomToast("Error: " + result);
-			getCohorts();
-			showDialog(COHORT_DIALOG);
-		} else {
-			if (mDownloadTask instanceof DownloadCohortTask) {
-				mDownloadTask = null;
-				getCohorts();
-				showDialog(COHORT_DIALOG);
-			} else {
-				mDownloadTask = null;
-				getPatients();
-			}
-		}
-		mDownloadTask = null;
-	}
-
-	@Override
-	public void taskComplete(HashMap<String, Object> result) {
-		// TODO Auto-generated method stub
-	}
-
-	@Override
-	public void progressUpdate(String message, int progress, int max) {
-		// TODO Auto-generated method stub
-	}
-
-	@Override
-	public void progressUpdate(String progress) {
-		// TODO Auto-generated method stub
-	}
 }
