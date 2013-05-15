@@ -1,15 +1,10 @@
 package com.mclinic.view.sample.activities;
 
-import org.achartengine.ChartFactory;
-import org.achartengine.GraphicalView;
-import org.achartengine.chart.PointStyle;
-import org.achartengine.model.XYMultipleSeriesDataset;
-import org.achartengine.renderer.XYMultipleSeriesRenderer;
-import org.achartengine.renderer.XYSeriesRenderer;
-
 import android.app.Activity;
-import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,51 +12,64 @@ import android.view.ViewGroup.LayoutParams;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.google.inject.Inject;
+import com.mclinic.api.context.Context;
+import com.mclinic.api.context.ContextFactory;
+import com.mclinic.api.model.Observation;
 import com.mclinic.api.model.Patient;
+import com.mclinic.api.service.ObservationService;
 import com.mclinic.api.service.PatientService;
 import com.mclinic.view.sample.R;
-import com.mclinic.view.sample.utilities.Constants;
+import com.mclinic.view.sample.utilities.StringConstants;
 import com.mclinic.view.sample.utilities.FileUtils;
+import org.achartengine.ChartFactory;
+import org.achartengine.GraphicalView;
+import org.achartengine.chart.PointStyle;
+import org.achartengine.model.XYMultipleSeriesDataset;
+import org.achartengine.model.XYSeries;
+import org.achartengine.renderer.XYMultipleSeriesRenderer;
+import org.achartengine.renderer.XYSeriesRenderer;
+import org.apache.lucene.queryParser.ParseException;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ObservationChartActivity extends Activity {
 
-    private Patient mPatient;
-    private String mObservationFieldName;
+    private static final String TAG = ObservationChartActivity.class.getSimpleName();
 
-    private XYMultipleSeriesDataset mDataset = new XYMultipleSeriesDataset();
-    private XYMultipleSeriesRenderer mRenderer = new XYMultipleSeriesRenderer();
+    private Patient patient;
 
-    private GraphicalView mChartView;
-    
-    @Inject
-    private PatientService pService;
+    private String observationFieldName;
+
+    private String observationFieldUuid;
+
+    private XYMultipleSeriesDataset dataset = new XYMultipleSeriesDataset();
+
+    private XYMultipleSeriesRenderer renderer = new XYMultipleSeriesRenderer();
+
+    private GraphicalView graphicalView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.observation_chart);
 
         if (!FileUtils.storageReady()) {
-            showCustomToast(getString(R.string.error_storage));
+            showCustomToast(getString(R.string.error, R.string.storage_error));
             finish();
         }
 
-        // TODO Check for invalid patient IDs
-        String patientIdStr = getIntent().getStringExtra(Constants.KEY_PATIENT_ID);
-        mPatient = getPatient(patientIdStr);
+        String patientUuid = getIntent().getStringExtra(StringConstants.KEY_PATIENT_ID);
+        patient = getPatient(patientUuid);
 
-        mObservationFieldName = getIntent().getStringExtra(Constants.KEY_OBSERVATION_FIELD_NAME);
+        observationFieldUuid = getIntent().getStringExtra(StringConstants.KEY_OBSERVATION_FIELD_ID);
+        observationFieldName = getIntent().getStringExtra(StringConstants.KEY_OBSERVATION_FIELD_NAME);
 
-        setTitle(getString(R.string.app_name) + " > "
-                + getString(R.string.view_observation));
+        setTitle(getString(R.string.app_name) + " > " + getString(R.string.view_patient_detail));
 
         TextView textView = (TextView) findViewById(R.id.title_text);
-        if (textView != null) {
-            textView.setText(mObservationFieldName);
-        }
+        textView.setText(observationFieldName);
 
         XYSeriesRenderer r = new XYSeriesRenderer();
         r.setLineWidth(3.0f);
@@ -69,91 +77,89 @@ public class ObservationChartActivity extends Activity {
         r.setPointStyle(PointStyle.CIRCLE);
         r.setFillPoints(true);
 
-        mRenderer.addSeriesRenderer(r);
-        mRenderer.setShowLegend(false);
-        //mRenderer.setXTitle("Encounter Date");
-        //mRenderer.setAxisTitleTextSize(18.0f);
-        mRenderer.setLabelsTextSize(11.0f);
-        //mRenderer.setXLabels(10);
-        mRenderer.setShowGrid(true);
-        mRenderer.setLabelsColor(getResources().getColor(android.R.color.black));
+        renderer.addSeriesRenderer(r);
+        renderer.setShowLegend(false);
+        renderer.setLabelsTextSize(11.0f);
+        renderer.setShowGrid(true);
+        renderer.setLabelsColor(getResources().getColor(android.R.color.black));
     }
 
-    private Patient getPatient(String patientUUID) {
-        return pService.getPatientByUUID(patientUUID);
+    private Context getContext() throws IOException {
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        String server = settings.getString(
+                PreferencesActivity.KEY_SERVER, getString(R.string.default_server));
+        String username = settings.getString(
+                PreferencesActivity.KEY_USERNAME, getString(R.string.default_username));
+        String password = settings.getString(
+                PreferencesActivity.KEY_PASSWORD, getString(R.string.default_password));
+        Context context = ContextFactory.createContext();
+
+        context.openSession();
+        try {
+            if (!context.isAuthenticated())
+                context.authenticate(username, password, server);
+        } catch (ParseException e) {
+            Log.e(TAG, "Unable to authenticate the current context.", e);
+        }
+
+        return context;
     }
 
-    private void getObservations(Patient patient, String fieldName) {
+    private Patient getPatient(final String uuid) {
+        Patient patient = null;
+        try {
+            PatientService patientService = getContext().getPatientService();
+            patient = patientService.getPatientByUuid(uuid);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception when trying to load patient", e);
+        }
+        return patient;
+    }
 
-//        ClinicAdapter ca = new ClinicAdapter();
-//        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//
-//        ca.open();
-//        Cursor c = ca.fetchPatientObservation(patientId, fieldName);
-//
-//        if (c != null && c.getCount() >= 0) {
-//
-//            XYSeries series;
-//            if (mDataset.getSeriesCount() > 0) {
-//                series = mDataset.getSeriesAt(0);
-//                series.clear();
-//            } else {
-//                series = new XYSeries(fieldName);
-//                mDataset.addSeries(series);
-//            }
-//
-//            int valueIntIndex = c.getColumnIndex(ClinicAdapter.KEY_VALUE_INT);
-//            int valueNumericIndex = c.getColumnIndex(ClinicAdapter.KEY_VALUE_NUMERIC);
-//            int encounterDateIndex = c.getColumnIndex(ClinicAdapter.KEY_ENCOUNTER_DATE);
-//            int dataTypeIndex = c.getColumnIndex(ClinicAdapter.KEY_DATA_TYPE);
-//
-//            do {
-//                try {
-//                    Date encounterDate = df.parse(c.getString(encounterDateIndex));
-//                    int dataType = c.getInt(dataTypeIndex);
-//
-//                    double value;
-//                    if (dataType == Constants.TYPE_INT) {
-//                        value = c.getInt(valueIntIndex);
-//                        series.add(encounterDate.getTime(), value);
-//                    } else if (dataType == Constants.TYPE_FLOAT) {
-//                        value = c.getFloat(valueNumericIndex);
-//                        series.add(encounterDate.getTime(), value);
-//                    }
-//                } catch (ParseException e) {
-//                    e.printStackTrace();
-//                }
-//
-//            } while (c.moveToNext());
-//        }
-//
-//        if (c != null) {
-//            c.close();
-//        }
-//        ca.close();
+    private void getObservations(final String patientUuid, final String fieldName, final String conceptUuid) {
+        List<Observation> observations = new ArrayList<Observation>();
+
+        try {
+            ObservationService observationService = getContext().getObservationService();
+            observations = observationService.getObservationsByPatientAndConcept(patientUuid, conceptUuid);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception when trying to load patient", e);
+        }
+
+        XYSeries series;
+        if (dataset.getSeriesCount() > 0) {
+            series = dataset.getSeriesAt(0);
+            series.clear();
+        } else {
+            series = new XYSeries(fieldName);
+            dataset.addSeries(series);
+        }
+
+        for (Observation observation : observations) {
+            double d = Double.parseDouble(observation.getValue());
+            series.add(observation.getObservationDate().getTime(), d);
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        if (mPatient != null && mObservationFieldName != null) {
-            getObservations(mPatient, mObservationFieldName);
+        if (patient != null && observationFieldName != null) {
+            getObservations(patient.getUuid(), observationFieldName, observationFieldUuid);
         }
 
-        if (mChartView == null) {
+        if (graphicalView == null) {
             LinearLayout layout = (LinearLayout) findViewById(R.id.chart);
-            mChartView = ChartFactory.getTimeChartView(this, mDataset,
-                    mRenderer, null);
-            layout.addView(mChartView, new LayoutParams(
-                    LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
+            graphicalView = ChartFactory.getTimeChartView(this, dataset, renderer, null);
+            layout.addView(graphicalView, new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
         } else {
-            mChartView.repaint();
+            graphicalView.repaint();
         }
     }
 
     private void showCustomToast(String message) {
-        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        LayoutInflater inflater = (LayoutInflater) getSystemService(android.content.Context.LAYOUT_INFLATER_SERVICE);
         View view = inflater.inflate(R.layout.toast_view, null);
 
         // set the text in the view

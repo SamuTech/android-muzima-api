@@ -42,7 +42,7 @@ public class App extends Application {
 				}
 				if (isTimerEnabled && (mElapsedTime > mTimerTimeout)) {
 					setAppLocked(true);
-					sendBroadcast(new Intent(Constants.SCREEN_LOCKER));
+					sendBroadcast(new Intent(StringConstants.SCREEN_LOCKER));
 				}
 				mHandler.postDelayed(this, mTimerDelay);
 			}

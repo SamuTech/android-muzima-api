@@ -17,13 +17,6 @@
         android:paddingRight="4dip"
         android:paddingTop="8dip"
         android:paddingBottom="2dip">
-
-        <ImageButton
-            android:id="@+id/barcode_button"
-            android:layout_width="55dip"
-            android:layout_height="fill_parent"
-            android:src="@drawable/ic_btn_barcode"
-            android:gravity="center"/>
         
         <EditText
             android:id="@+id/search_text"
@@ -36,13 +29,6 @@
             android:textSize="19sp"
             android:imeOptions="actionSearch|flagNoExtractUi"
 			android:inputType="textFilter"/>
-        
-        <ImageButton
-			android:id="@+id/search_patient"
-			android:layout_width="55dip"
-			android:layout_height="fill_parent"
-			android:src="@drawable/ic_btn_search"
-			android:gravity="center" />
 		
 		<ImageButton
 			android:id="@+id/download_patients"
@@ -50,6 +36,13 @@
 			android:layout_height="fill_parent"
 			android:src="@drawable/ic_menu_refresh"
 			android:gravity="center" />
+
+        <ProgressBar
+                android:id="@+id/progress_bar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@android:style/Widget.ProgressBar.Inverse"
+                android:layout_marginRight="5dp"/>
     </LinearLayout>
 
     <LinearLayout
@@ -75,39 +68,5 @@
             android:text="@string/no_patients"
             android:textColor="@drawable/black"
             android:textSize="20sp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/buttonholder"
-        android:layout_width="fill_parent"
-        android:layout_height="70dip"
-        android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:paddingLeft="4dip"
-        android:paddingRight="4dip"
-        android:paddingTop="8dip"
-        android:paddingBottom="2dip" >
-        
-        <Button
-            android:id="@+id/create_patient"
-            android:layout_width="55dip"
-            android:layout_height="fill_parent"
-            android:text="@string/new_patient"
-            android:layout_gravity="bottom"
-            android:layout_weight="1"
-            android:minHeight="90px"
-            android:padding="6dp"
-            android:textSize="16dp" />
-
-        <Button
-            android:id="@+id/filled_forms"
-            android:layout_width="55dip"
-            android:layout_height="fill_parent"
-            android:text="@string/filled_forms"
-            android:layout_gravity="bottom"
-            android:layout_weight="1"
-            android:minHeight="90px"
-            android:padding="6dp"
-            android:textSize="16dp" />
     </LinearLayout>
 </LinearLayout>

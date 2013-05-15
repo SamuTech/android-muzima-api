@@ -1,137 +1,104 @@
 package com.mclinic.view.sample.activities;
 
-import java.util.ArrayList;
-
 import android.app.ListActivity;
-import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.google.inject.Inject;
+import com.mclinic.api.context.Context;
+import com.mclinic.api.context.ContextFactory;
 import com.mclinic.api.model.Observation;
 import com.mclinic.api.model.Patient;
+import com.mclinic.api.service.ObservationService;
 import com.mclinic.api.service.PatientService;
 import com.mclinic.view.sample.R;
 import com.mclinic.view.sample.adapters.EncounterAdapter;
-import com.mclinic.view.sample.utilities.Constants;
+import com.mclinic.view.sample.utilities.StringConstants;
 import com.mclinic.view.sample.utilities.FileUtils;
+import org.apache.lucene.queryParser.ParseException;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ObservationTimelineActivity extends ListActivity {
 
-    private Patient mPatient;
-    private String mObservationFieldName;
+    private static final String TAG = ObservationChartActivity.class.getSimpleName();
 
-    private ArrayAdapter<Observation> mEncounterAdapter;
-    private ArrayList<Observation> mEncounters = new ArrayList<Observation>();
-    
-    @Inject
-    private PatientService pService;
+    private Patient patient;
+
+    private String fieldUuid;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.observation_timeline);
 
         if (!FileUtils.storageReady()) {
-            showCustomToast(getString(R.string.error_storage));
+            showCustomToast(getString(R.string.error, R.string.storage_error));
             finish();
         }
 
-        // TODO Check for invalid patient IDs
-        String patientIdStr = getIntent().getStringExtra(Constants.KEY_PATIENT_ID);
-        mPatient = getPatient(patientIdStr);
+        String patientUuid = getIntent().getStringExtra(StringConstants.KEY_PATIENT_ID);
+        patient = getPatient(patientUuid);
 
-        mObservationFieldName = getIntent().getStringExtra(Constants.KEY_OBSERVATION_FIELD_NAME);
+        fieldUuid = getIntent().getStringExtra(StringConstants.KEY_OBSERVATION_FIELD_ID);
+        String fieldName = getIntent().getStringExtra(StringConstants.KEY_OBSERVATION_FIELD_NAME);
 
-        setTitle(getString(R.string.app_name) + " > "
-                + getString(R.string.view_observation));
+        setTitle(getString(R.string.app_name) + " > " + getString(R.string.view_patient_detail));
 
         TextView textView = (TextView) findViewById(R.id.title_text);
-        if (textView != null) {
-            textView.setText(mObservationFieldName);
+        textView.setText(fieldName);
+    }
+
+    private Context getContext() throws IOException {
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        String server = settings.getString(
+                PreferencesActivity.KEY_SERVER, getString(R.string.default_server));
+        String username = settings.getString(
+                PreferencesActivity.KEY_USERNAME, getString(R.string.default_username));
+        String password = settings.getString(
+                PreferencesActivity.KEY_PASSWORD, getString(R.string.default_password));
+        Context context = ContextFactory.createContext();
+
+        context.openSession();
+        try {
+            if (!context.isAuthenticated())
+                context.authenticate(username, password, server);
+        } catch (ParseException e) {
+            Log.e(TAG, "Unable to authenticate the current context.", e);
         }
+
+        return context;
     }
 
-    private Patient getPatient(String patientUUID) {
-        return pService.getPatientByUUID(patientUUID);
+    private Patient getPatient(final String uuid) {
+        Patient patient = null;
+        try {
+            PatientService patientService = getContext().getPatientService();
+            patient = patientService.getPatientByUuid(uuid);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception when trying to load patient", e);
+        }
+        return patient;
     }
 
-    private void getObservations(Patient patient, String fieldName) {
-
-//        ClinicAdapter ca = new ClinicAdapter();
-//        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//
-//        ca.open();
-//        Cursor c = ca.fetchPatientObservation(patientId, fieldName);
-//
-//        if (c != null && c.getCount() >= 0) {
-//
-//            mEncounters.clear();
-//
-//            int valueTextIndex = c.getColumnIndex(ClinicAdapter.KEY_VALUE_TEXT);
-//            int valueIntIndex = c.getColumnIndex(ClinicAdapter.KEY_VALUE_INT);
-//            int valueDateIndex = c.getColumnIndex(ClinicAdapter.KEY_VALUE_DATE);
-//            int valueNumericIndex = c.getColumnIndex(ClinicAdapter.KEY_VALUE_NUMERIC);
-//            int encounterDateIndex = c.getColumnIndex(ClinicAdapter.KEY_ENCOUNTER_DATE);
-//            int dataTypeIndex = c.getColumnIndex(ClinicAdapter.KEY_DATA_TYPE);
-//
-//            Observation obs;
-//            do {
-//                obs = new Observation();
-//                obs.setFieldName(fieldName);
-//                try {
-//                    obs.setEncounterDate(df.parse(c
-//                            .getString(encounterDateIndex)));
-//                } catch (ParseException e) {
-//                    e.printStackTrace();
-//                }
-//
-//                int dataType = c.getInt(dataTypeIndex);
-//                obs.setDataType((byte) dataType);
-//                switch (dataType) {
-//                    case Constants.TYPE_INT:
-//                        obs.setValueInt(c.getInt(valueIntIndex));
-//                        break;
-//                    case Constants.TYPE_FLOAT:
-//                        obs.setValueNumeric(c.getFloat(valueNumericIndex));
-//                        break;
-//                    case Constants.TYPE_DATE:
-//                        try {
-//                            obs.setValueDate(df.parse(c
-//                                    .getString(valueDateIndex)));
-//                        } catch (ParseException e) {
-//                            e.printStackTrace();
-//                        }
-//                        break;
-//                    default:
-//                        obs.setValueText(c.getString(valueTextIndex));
-//                }
-//
-//                mEncounters.add(obs);
-//
-//            } while (c.moveToNext());
-//        }
-//
-//        refreshView();
-//
-//        if (c != null) {
-//            c.close();
-//        }
-//        ca.close();
-    }
-
-    private void refreshView() {
-
-        mEncounterAdapter = new EncounterAdapter(this, R.layout.encounter_list_item,
-                mEncounters);
-        setListAdapter(mEncounterAdapter);
-
+    private void getObservations(final String patientUuid, final String conceptUuid) {
+        List<Observation> observations = new ArrayList<Observation>();
+        try {
+            ObservationService observationService = getContext().getObservationService();
+            observations = observationService.getObservationsByPatientAndConcept(patientUuid, conceptUuid);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception when trying to load patient", e);
+        }
+        ArrayAdapter<Observation> observationAdapter = new EncounterAdapter(this, R.layout.encounter_list_item, observations);
+        setListAdapter(observationAdapter);
     }
 
     @Override
@@ -143,8 +110,8 @@ public class ObservationTimelineActivity extends ListActivity {
     protected void onResume() {
         super.onResume();
 
-        if (mPatient != null && mObservationFieldName != null) {
-            getObservations(mPatient, mObservationFieldName);
+        if (patient != null && fieldUuid != null) {
+            getObservations(patient.getUuid(), fieldUuid);
         }
     }
 
@@ -160,7 +127,7 @@ public class ObservationTimelineActivity extends ListActivity {
     }
 
     private void showCustomToast(String message) {
-        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        LayoutInflater inflater = (LayoutInflater) getSystemService(android.content.Context.LAYOUT_INFLATER_SERVICE);
         View view = inflater.inflate(R.layout.toast_view, null);
 
         // set the text in the view

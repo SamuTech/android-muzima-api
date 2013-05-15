@@ -10,7 +10,7 @@
 
             <intent
                 android:action="android.intent.action.VIEW"
-                android:data="http://opendatakit.org" />
+                android:data="https://github.com/muzima" />
         </PreferenceScreen>
     </PreferenceCategory>
     
@@ -37,29 +37,6 @@
             android:key="password"
             android:password="true"
             android:title="@string/password" />
-
-        <EditTextPreference
-            android:id="@+id/provider"
-            android:defaultValue="0"
-            android:dialogTitle="@string/change_provider"
-            android:inputType="phone"
-            android:key="provider"
-            android:title="@string/provider" />
-
-        <EditTextPreference
-            android:id="@+id/saved_search"
-            android:defaultValue="0"
-            android:dialogTitle="@string/change_saved_search"
-            android:inputType="phone"
-            android:key="saved_search"
-            android:title="@string/saved_search" />
-
-        <CheckBoxPreference
-            android:id="@+id/use_saved_searches"
-            android:key="use_saved_searches"
-            android:summaryOff="@string/saved_search_hint"
-            android:summaryOn="@string/saved_search_hint"
-            android:title="@string/use_saved_search" />
     </PreferenceCategory>
     
     <PreferenceCategory android:title="@string/auth" >
