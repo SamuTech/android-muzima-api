@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.activities;
+package com.muzima.view.sample.activities;
 
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
@@ -6,7 +6,7 @@ import android.os.Bundle;
 import android.preference.EditTextPreference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceScreen;
-import com.mclinic.view.sample.R;
+import com.muzima.view.sample.R;
 
 public class PreferencesActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
 

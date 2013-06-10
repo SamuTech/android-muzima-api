@@ -1,6 +1,7 @@
-package com.mclinic.view.sample.activities;
+package com.muzima.view.sample.activities;
 
 import android.app.ListActivity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -9,6 +10,8 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.muzima.api.context.Context;
@@ -17,27 +20,32 @@ import com.muzima.api.model.Observation;
 import com.muzima.api.model.Patient;
 import com.muzima.api.service.ObservationService;
 import com.muzima.api.service.PatientService;
-import com.mclinic.view.sample.R;
-import com.mclinic.view.sample.adapters.EncounterAdapter;
-import com.mclinic.view.sample.utilities.StringConstants;
-import com.mclinic.view.sample.utilities.FileUtils;
+import com.muzima.util.Constants;
+import com.muzima.view.sample.R;
+import com.muzima.view.sample.adapters.ObservationAdapter;
+import com.muzima.view.sample.utilities.StringConstants;
+import com.muzima.view.sample.utilities.FileUtils;
 import org.apache.lucene.queryParser.ParseException;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ObservationTimelineActivity extends ListActivity {
+public class ViewPatientActivity extends ListActivity {
 
     private static final String TAG = ObservationChartActivity.class.getSimpleName();
 
-    private Patient patient;
+    private static Patient patient;
 
-    private String fieldUuid;
+    private ArrayAdapter<Observation> observationAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.observation_timeline);
+        setContentView(R.layout.view_patient);
+
+        setListAdapter(observationAdapter);
 
         if (!FileUtils.storageReady()) {
             showCustomToast(getString(R.string.error, R.string.storage_error));
@@ -47,13 +55,26 @@ public class ObservationTimelineActivity extends ListActivity {
         String patientUuid = getIntent().getStringExtra(StringConstants.KEY_PATIENT_ID);
         patient = getPatient(patientUuid);
 
-        fieldUuid = getIntent().getStringExtra(StringConstants.KEY_OBSERVATION_FIELD_ID);
-        String fieldName = getIntent().getStringExtra(StringConstants.KEY_OBSERVATION_FIELD_NAME);
+        setTitle(getString(R.string.app_name) + " > " + getString(R.string.view_patient));
 
-        setTitle(getString(R.string.app_name) + " > " + getString(R.string.view_patient_detail));
+        TextView textView = (TextView) findViewById(R.id.identifier_text);
+        textView.setText(patient.getIdentifier());
 
-        TextView textView = (TextView) findViewById(R.id.title_text);
-        textView.setText(fieldName);
+        textView = (TextView) findViewById(R.id.name_text);
+        textView.setText(patient.getGivenName() + " " + patient.getMiddleName() + " " + patient.getFamilyName());
+
+        DateFormat df = new SimpleDateFormat("dd/MMM/yyyy");
+        textView = (TextView) findViewById(R.id.birthdate_text);
+        textView.setText(df.format(patient.getBirthdate()));
+
+        ImageView imageView = (ImageView) findViewById(R.id.gender_image);
+        if (imageView != null) {
+            if (patient.getGender().equals("M")) {
+                imageView.setImageResource(R.drawable.male);
+            } else if (patient.getGender().equals("F")) {
+                imageView.setImageResource(R.drawable.female);
+            }
+        }
     }
 
     private Context getContext() throws Exception {
@@ -88,16 +109,40 @@ public class ObservationTimelineActivity extends ListActivity {
         return patient;
     }
 
-    private void getObservations(final String patientUuid, final String conceptUuid) {
+    private void getAllObservations(final String patientUuid) {
         List<Observation> observations = new ArrayList<Observation>();
         try {
             ObservationService observationService = getContext().getObservationService();
-            observations = observationService.getObservationsByPatientAndConcept(patientUuid, conceptUuid);
+            observations = observationService.getObservationsByPatient(patientUuid);
         } catch (Exception e) {
             Log.e(TAG, "Exception when trying to load patient", e);
         }
-        ArrayAdapter<Observation> observationAdapter = new EncounterAdapter(this, R.layout.encounter_list_item, observations);
+        observationAdapter = new ObservationAdapter(this, R.layout.observation_list_item, observations);
         setListAdapter(observationAdapter);
+    }
+
+    @Override
+    protected void onListItemClick(ListView listView, View view, int position, long id) {
+
+        if (patient != null) {
+            Observation obs = (Observation) getListAdapter().getItem(position);
+
+            Intent ip;
+            int dataType = obs.getDataType();
+            if (dataType == Constants.TYPE_NUMERIC) {
+                ip = new Intent(getApplicationContext(), ObservationChartActivity.class);
+                ip.putExtra(StringConstants.KEY_PATIENT_ID, patient.getUuid());
+                ip.putExtra(StringConstants.KEY_OBSERVATION_FIELD_ID, obs.getQuestionUuid());
+                ip.putExtra(StringConstants.KEY_OBSERVATION_FIELD_NAME, obs.getQuestionName());
+                startActivity(ip);
+            } else {
+                ip = new Intent(getApplicationContext(), ObservationTimelineActivity.class);
+                ip.putExtra(StringConstants.KEY_PATIENT_ID, patient.getUuid());
+                ip.putExtra(StringConstants.KEY_OBSERVATION_FIELD_ID, obs.getQuestionUuid());
+                ip.putExtra(StringConstants.KEY_OBSERVATION_FIELD_NAME, obs.getQuestionName());
+                startActivity(ip);
+            }
+        }
     }
 
     @Override
@@ -108,16 +153,14 @@ public class ObservationTimelineActivity extends ListActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
-        if (patient != null && fieldUuid != null) {
-            getObservations(patient.getUuid(), fieldUuid);
+        if (patient != null) {
+            getAllObservations(patient.getUuid());
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
     }
 
     @Override
@@ -139,4 +182,5 @@ public class ObservationTimelineActivity extends ListActivity {
         t.setGravity(Gravity.CENTER, 0, 0);
         t.show();
     }
+
 }

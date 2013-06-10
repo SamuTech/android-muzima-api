@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.listeners;
+package com.muzima.view.sample.listeners;
 
 public interface InstanceLoaderListener {
     void loadingComplete(String result);

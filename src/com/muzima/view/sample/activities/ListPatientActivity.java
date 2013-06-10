@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.activities;
+package com.muzima.view.sample.activities;
 
 import android.app.ListActivity;
 import android.content.Intent;
@@ -27,12 +27,12 @@ import com.muzima.api.model.Patient;
 import com.muzima.api.service.PatientService;
 import com.muzima.search.api.util.StringUtil;
 import com.muzima.util.Constants;
-import com.mclinic.view.sample.R;
-import com.mclinic.view.sample.adapters.PatientAdapter;
-import com.mclinic.view.sample.tasks.DownloadPatientTask;
-import com.mclinic.view.sample.tasks.DownloadTask;
-import com.mclinic.view.sample.utilities.StringConstants;
-import com.mclinic.view.sample.utilities.FileUtils;
+import com.muzima.view.sample.R;
+import com.muzima.view.sample.adapters.PatientAdapter;
+import com.muzima.view.sample.tasks.DownloadPatientTask;
+import com.muzima.view.sample.tasks.DownloadTask;
+import com.muzima.view.sample.utilities.StringConstants;
+import com.muzima.view.sample.utilities.FileUtils;
 import org.apache.lucene.queryParser.ParseException;
 
 import java.util.ArrayList;

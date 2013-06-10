@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.mclinic.view.sample.utilities;
+package com.muzima.view.sample.utilities;
 
 
 /**
@@ -27,7 +27,7 @@ public class StringConstants {
     public static final String KEY_OBSERVATION_FIELD_ID = "concept_uuid";
     public static final String KEY_OBSERVATION_FIELD_NAME = "concept_name";
 	
-	public static final String SCREEN_LOCKER = "com.mclinic.view.sample.intent.action.LOCK";
+	public static final String SCREEN_LOCKER = "com.muzima.view.sample.intent.action.LOCK";
 	public static final String CODE_REGEX = "[0-9]{6,}$";
 	public static final String BACK_DOOR = "732738";
 }

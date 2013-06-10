@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.activities;
+package com.muzima.view.sample.activities;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
@@ -18,9 +18,9 @@ import com.muzima.api.model.Observation;
 import com.muzima.api.model.Patient;
 import com.muzima.api.service.ObservationService;
 import com.muzima.api.service.PatientService;
-import com.mclinic.view.sample.R;
-import com.mclinic.view.sample.utilities.StringConstants;
-import com.mclinic.view.sample.utilities.FileUtils;
+import com.muzima.view.sample.R;
+import com.muzima.view.sample.utilities.StringConstants;
+import com.muzima.view.sample.utilities.FileUtils;
 import org.achartengine.ChartFactory;
 import org.achartengine.GraphicalView;
 import org.achartengine.chart.PointStyle;

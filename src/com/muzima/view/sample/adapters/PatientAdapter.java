@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.adapters;
+package com.muzima.view.sample.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -8,7 +8,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 import com.muzima.api.model.Patient;
-import com.mclinic.view.sample.R;
+import com.muzima.view.sample.R;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;

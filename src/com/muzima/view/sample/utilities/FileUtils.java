@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.utilities;
+package com.muzima.view.sample.utilities;
 /*
  * Copyright (C) 2009 University of Washington
  * 

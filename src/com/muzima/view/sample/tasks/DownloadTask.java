@@ -1,7 +1,7 @@
-package com.mclinic.view.sample.tasks;
+package com.muzima.view.sample.tasks;
 
 import android.os.AsyncTask;
-import com.mclinic.view.sample.listeners.DownloadListener;
+import com.muzima.view.sample.listeners.DownloadListener;
 
 public abstract class DownloadTask extends AsyncTask<String, String, String> {
 

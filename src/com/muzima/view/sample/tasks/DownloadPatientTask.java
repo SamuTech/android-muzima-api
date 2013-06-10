@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.tasks;
+package com.muzima.view.sample.tasks;
 
 import android.util.Log;
 import android.widget.ProgressBar;

@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.utilities;
+package com.muzima.view.sample.utilities;
 
 import android.app.Application;
 import android.content.Intent;

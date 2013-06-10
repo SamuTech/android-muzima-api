@@ -1,4 +1,4 @@
-package com.mclinic.view.sample.listeners;
+package com.muzima.view.sample.listeners;
 
 import java.util.ArrayList;
 
