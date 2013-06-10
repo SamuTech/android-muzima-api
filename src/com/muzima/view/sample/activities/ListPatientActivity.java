@@ -35,6 +35,10 @@ import com.muzima.view.sample.utilities.StringConstants;
 import com.muzima.view.sample.utilities.FileUtils;
 import org.apache.lucene.queryParser.ParseException;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -69,6 +73,22 @@ public class ListPatientActivity extends ListActivity {
             if (savedInstanceState.containsKey(DOWNLOAD_PATIENT_CANCELED_KEY)) {
                 downloadCanceled = savedInstanceState.getBoolean(DOWNLOAD_PATIENT_CANCELED_KEY);
             }
+        }
+
+        try {
+            InputStream inputStream = getResources().openRawResource(R.raw.configuration);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+
+            StringBuilder builder = new StringBuilder();
+            String line;
+            while((line = reader.readLine()) != null) {
+                builder.append(line);
+            }
+            reader.close();
+
+            ContextFactory.setProperty(Constants.RESOURCE_CONFIGURATION_STRING, builder.toString());
+        } catch (IOException e) {
+            Log.e(TAG, "Unable to read configuration file!", e);
         }
 
         setTitle(getString(R.string.app_name) + " > " + getString(R.string.find_patient));

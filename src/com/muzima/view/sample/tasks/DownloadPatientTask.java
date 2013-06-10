@@ -62,15 +62,10 @@ public class DownloadPatientTask extends DownloadTask {
                 CohortData cohortData = cohortService.downloadCohortData(selectedCohort.getUuid(), false);
                 for (Patient patient : cohortData.getPatients()) {
                     List<Observation> observations = observationService.downloadObservationsByPatient(patient.getUuid());
-                    for (Observation observation : observations) {
-                        observationService.saveObservation(observation);
-                    }
-                    patientService.savePatient(patient);
+                    observationService.saveObservations(observations);
                 }
-
-                for (CohortMember cohortMember : cohortData.getCohortMembers()) {
-                    cohortService.saveCohortMember(cohortMember);
-                }
+                patientService.savePatients(cohortData.getPatients());
+                cohortService.saveCohortMembers(cohortData.getCohortMembers());
             }
         } catch (Exception e) {
             Log.e(TAG, "Exception when trying to load patient", e);
