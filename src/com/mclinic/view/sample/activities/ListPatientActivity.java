@@ -21,12 +21,12 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.mclinic.api.context.Context;
-import com.mclinic.api.context.ContextFactory;
-import com.mclinic.api.model.Patient;
-import com.mclinic.api.service.PatientService;
-import com.mclinic.search.api.util.StringUtil;
-import com.mclinic.util.Constants;
+import com.muzima.api.context.Context;
+import com.muzima.api.context.ContextFactory;
+import com.muzima.api.model.Patient;
+import com.muzima.api.service.PatientService;
+import com.muzima.search.api.util.StringUtil;
+import com.muzima.util.Constants;
 import com.mclinic.view.sample.R;
 import com.mclinic.view.sample.adapters.PatientAdapter;
 import com.mclinic.view.sample.tasks.DownloadPatientTask;
@@ -35,7 +35,6 @@ import com.mclinic.view.sample.utilities.StringConstants;
 import com.mclinic.view.sample.utilities.FileUtils;
 import org.apache.lucene.queryParser.ParseException;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -169,7 +168,7 @@ public class ListPatientActivity extends ListActivity {
 
     }
 
-    private Context getContext() throws IOException {
+    private Context getContext() throws Exception {
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         String server = settings.getString(
                 PreferencesActivity.KEY_SERVER, getString(R.string.default_server));

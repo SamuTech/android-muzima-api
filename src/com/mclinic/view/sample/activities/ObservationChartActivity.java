@@ -12,12 +12,12 @@ import android.view.ViewGroup.LayoutParams;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.mclinic.api.context.Context;
-import com.mclinic.api.context.ContextFactory;
-import com.mclinic.api.model.Observation;
-import com.mclinic.api.model.Patient;
-import com.mclinic.api.service.ObservationService;
-import com.mclinic.api.service.PatientService;
+import com.muzima.api.context.Context;
+import com.muzima.api.context.ContextFactory;
+import com.muzima.api.model.Observation;
+import com.muzima.api.model.Patient;
+import com.muzima.api.service.ObservationService;
+import com.muzima.api.service.PatientService;
 import com.mclinic.view.sample.R;
 import com.mclinic.view.sample.utilities.StringConstants;
 import com.mclinic.view.sample.utilities.FileUtils;
@@ -30,7 +30,6 @@ import org.achartengine.renderer.XYMultipleSeriesRenderer;
 import org.achartengine.renderer.XYSeriesRenderer;
 import org.apache.lucene.queryParser.ParseException;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -84,7 +83,7 @@ public class ObservationChartActivity extends Activity {
         renderer.setLabelsColor(getResources().getColor(android.R.color.black));
     }
 
-    private Context getContext() throws IOException {
+    private Context getContext() throws Exception {
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         String server = settings.getString(
                 PreferencesActivity.KEY_SERVER, getString(R.string.default_server));

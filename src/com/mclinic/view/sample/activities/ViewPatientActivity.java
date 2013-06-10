@@ -14,20 +14,19 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.mclinic.api.context.Context;
-import com.mclinic.api.context.ContextFactory;
-import com.mclinic.api.model.Observation;
-import com.mclinic.api.model.Patient;
-import com.mclinic.api.service.ObservationService;
-import com.mclinic.api.service.PatientService;
-import com.mclinic.util.Constants;
+import com.muzima.api.context.Context;
+import com.muzima.api.context.ContextFactory;
+import com.muzima.api.model.Observation;
+import com.muzima.api.model.Patient;
+import com.muzima.api.service.ObservationService;
+import com.muzima.api.service.PatientService;
+import com.muzima.util.Constants;
 import com.mclinic.view.sample.R;
 import com.mclinic.view.sample.adapters.ObservationAdapter;
 import com.mclinic.view.sample.utilities.StringConstants;
 import com.mclinic.view.sample.utilities.FileUtils;
 import org.apache.lucene.queryParser.ParseException;
 
-import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -78,7 +77,7 @@ public class ViewPatientActivity extends ListActivity {
         }
     }
 
-    private Context getContext() throws IOException {
+    private Context getContext() throws Exception {
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         String server = settings.getString(
                 PreferencesActivity.KEY_SERVER, getString(R.string.default_server));

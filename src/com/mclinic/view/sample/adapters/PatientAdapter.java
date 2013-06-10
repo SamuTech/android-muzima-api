@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
-import com.mclinic.api.model.Patient;
+import com.muzima.api.model.Patient;
 import com.mclinic.view.sample.R;
 
 import java.text.DateFormat;

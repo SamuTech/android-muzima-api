@@ -2,17 +2,18 @@ package com.mclinic.view.sample.tasks;
 
 import android.util.Log;
 import android.widget.ProgressBar;
-import com.mclinic.api.context.Context;
-import com.mclinic.api.context.ContextFactory;
-import com.mclinic.api.model.Cohort;
-import com.mclinic.api.model.Member;
-import com.mclinic.api.service.CohortService;
-import com.mclinic.api.service.ObservationService;
-import com.mclinic.api.service.PatientService;
-import com.mclinic.search.api.util.StringUtil;
-import org.apache.lucene.queryParser.ParseException;
+import com.muzima.api.context.Context;
+import com.muzima.api.context.ContextFactory;
+import com.muzima.api.model.Cohort;
+import com.muzima.api.model.CohortData;
+import com.muzima.api.model.CohortMember;
+import com.muzima.api.model.Observation;
+import com.muzima.api.model.Patient;
+import com.muzima.api.service.CohortService;
+import com.muzima.api.service.ObservationService;
+import com.muzima.api.service.PatientService;
+import com.muzima.search.api.util.StringUtil;
 
-import java.io.IOException;
 import java.util.List;
 
 public class DownloadPatientTask extends DownloadTask {
@@ -55,16 +56,23 @@ public class DownloadPatientTask extends DownloadTask {
             ObservationService observationService = context.getObservationService();
 
             List<Cohort> cohorts = cohortService.downloadCohortsByName(StringUtil.EMPTY);
-            for (Cohort cohort : cohorts) {
-                List<Member> members = cohortService.downloadMembers(cohort.getUuid());
-                for (Member member : members) {
-                    patientService.downloadPatientByUuid(member.getPatientUuid());
-                    observationService.downloadObservationsByPatient(member.getPatientUuid());
+            if (!cohorts.isEmpty()) {
+                Cohort selectedCohort = cohorts.get(0);
+                cohortService.saveCohort(selectedCohort);
+                CohortData cohortData = cohortService.downloadCohortData(selectedCohort.getUuid(), false);
+                for (Patient patient : cohortData.getPatients()) {
+                    List<Observation> observations = observationService.downloadObservationsByPatient(patient.getUuid());
+                    for (Observation observation : observations) {
+                        observationService.saveObservation(observation);
+                    }
+                    patientService.savePatient(patient);
+                }
+
+                for (CohortMember cohortMember : cohortData.getCohortMembers()) {
+                    cohortService.saveCohortMember(cohortMember);
                 }
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Exception when trying to load patient", e);
-        } catch (ParseException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Exception when trying to load patient", e);
         } finally {
             if (context != null)
