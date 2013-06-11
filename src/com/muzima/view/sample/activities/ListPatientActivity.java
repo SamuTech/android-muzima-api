@@ -31,8 +31,8 @@ import com.muzima.view.sample.R;
 import com.muzima.view.sample.adapters.PatientAdapter;
 import com.muzima.view.sample.tasks.DownloadPatientTask;
 import com.muzima.view.sample.tasks.DownloadTask;
-import com.muzima.view.sample.utilities.StringConstants;
 import com.muzima.view.sample.utilities.FileUtils;
+import com.muzima.view.sample.utilities.StringConstants;
 import org.apache.lucene.queryParser.ParseException;
 
 import java.io.BufferedReader;
@@ -53,6 +53,8 @@ public class ListPatientActivity extends ListActivity {
     public static final int BARCODE_CAPTURE = 2;
 
     public static final int DOWNLOAD_PATIENT = 1;
+
+    private Context context;
 
     private EditText editText;
 
@@ -76,18 +78,20 @@ public class ListPatientActivity extends ListActivity {
         }
 
         try {
-            InputStream inputStream = getResources().openRawResource(R.raw.configuration);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            ContextFactory.setProperty(Constants.RESOURCE_CONFIGURATION_STRING, getConfigurationString());
 
-            StringBuilder builder = new StringBuilder();
-            String line;
-            while((line = reader.readLine()) != null) {
-                builder.append(line);
-            }
-            reader.close();
-
-            ContextFactory.setProperty(Constants.RESOURCE_CONFIGURATION_STRING, builder.toString());
-        } catch (IOException e) {
+            SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+            String server = settings.getString(
+                    PreferencesActivity.KEY_SERVER, getString(R.string.default_server));
+            String username = settings.getString(
+                    PreferencesActivity.KEY_USERNAME, getString(R.string.default_username));
+            String password = settings.getString(
+                    PreferencesActivity.KEY_PASSWORD, getString(R.string.default_password));
+            context = ContextFactory.createContext();
+            context.openSession();
+            if (!context.isAuthenticated())
+                context.authenticate(username, password, server);
+        } catch (Exception e) {
             Log.e(TAG, "Unable to read configuration file!", e);
         }
 
@@ -135,6 +139,19 @@ public class ListPatientActivity extends ListActivity {
                 downloadTask.execute(username, password, server);
             }
         });
+    }
+
+    private String getConfigurationString() throws IOException {
+        InputStream inputStream = getResources().openRawResource(R.raw.configuration);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+
+        String line;
+        StringBuilder builder = new StringBuilder();
+        while ((line = reader.readLine()) != null) {
+            builder.append(line);
+        }
+        reader.close();
+        return builder.toString();
     }
 
     @Override
@@ -188,24 +205,7 @@ public class ListPatientActivity extends ListActivity {
 
     }
 
-    private Context getContext() throws Exception {
-        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        String server = settings.getString(
-                PreferencesActivity.KEY_SERVER, getString(R.string.default_server));
-        String username = settings.getString(
-                PreferencesActivity.KEY_USERNAME, getString(R.string.default_username));
-        String password = settings.getString(
-                PreferencesActivity.KEY_PASSWORD, getString(R.string.default_password));
-        Context context = ContextFactory.createContext();
-
-        context.openSession();
-        try {
-            if (!context.isAuthenticated())
-                context.authenticate(username, password, server);
-        } catch (ParseException e) {
-            Log.e(TAG, "Unable to authenticate the current context.", e);
-        }
-
+    private Context getContext(){
         return context;
     }
 

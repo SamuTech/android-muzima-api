@@ -13,7 +13,10 @@ import com.muzima.api.service.CohortService;
 import com.muzima.api.service.ObservationService;
 import com.muzima.api.service.PatientService;
 import com.muzima.search.api.util.StringUtil;
+import com.muzima.util.Constants;
+import junit.framework.Assert;
 
+import java.io.File;
 import java.util.List;
 
 public class DownloadPatientTask extends DownloadTask {
@@ -49,13 +52,28 @@ public class DownloadPatientTask extends DownloadTask {
         try {
             context = ContextFactory.createContext();
             context.openSession();
-            context.authenticate(username, password, server);
+            if (!context.isAuthenticated()) {
+                context.authenticate(username, password, server);
+            }
+
+            ContextFactory.getProperty(Constants.LUCENE_DIRECTORY_NAME);
+            File luceneDirectory = new File(System.getProperty("java.io.tmpdir") + "/lucene");
+            for (String filename : luceneDirectory.list()) {
+                File file = new File(luceneDirectory, filename);
+                Assert.assertTrue(file.delete());
+            }
+
+            int patientCounter = 0;
+            int cohortMemberCounter = 0;
+            int observationCounter = 0;
 
             CohortService cohortService = context.getCohortService();
             PatientService patientService = context.getPatientService();
             ObservationService observationService = context.getObservationService();
 
             List<Cohort> cohorts = cohortService.downloadCohortsByName(StringUtil.EMPTY);
+
+            long start = System.currentTimeMillis();
             if (!cohorts.isEmpty()) {
                 Cohort selectedCohort = cohorts.get(0);
                 cohortService.saveCohort(selectedCohort);
@@ -63,10 +81,20 @@ public class DownloadPatientTask extends DownloadTask {
                 for (Patient patient : cohortData.getPatients()) {
                     List<Observation> observations = observationService.downloadObservationsByPatient(patient.getUuid());
                     observationService.saveObservations(observations);
+                    observationCounter = observationCounter + observations.size();
                 }
+                patientCounter = patientCounter + cohortData.getPatients().size();
                 patientService.savePatients(cohortData.getPatients());
+                cohortMemberCounter = cohortMemberCounter + cohortData.getCohortMembers().size();
                 cohortService.saveCohortMembers(cohortData.getCohortMembers());
             }
+            long end = System.currentTimeMillis();
+            double elapsed = (end - start) / 1000;
+            Log.i(TAG, "Download Statistic:");
+            Log.i(TAG, "Total time: " + elapsed + "s");
+            Log.i(TAG, "Total patients: " + patientCounter);
+            Log.i(TAG, "Total cohort members: " + cohortMemberCounter);
+            Log.i(TAG, "Total observations: " + observationCounter);
         } catch (Exception e) {
             Log.e(TAG, "Exception when trying to load patient", e);
         } finally {

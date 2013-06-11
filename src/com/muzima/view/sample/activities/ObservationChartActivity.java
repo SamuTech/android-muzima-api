@@ -92,8 +92,6 @@ public class ObservationChartActivity extends Activity {
         String password = settings.getString(
                 PreferencesActivity.KEY_PASSWORD, getString(R.string.default_password));
         Context context = ContextFactory.createContext();
-
-        context.openSession();
         try {
             if (!context.isAuthenticated())
                 context.authenticate(username, password, server);
