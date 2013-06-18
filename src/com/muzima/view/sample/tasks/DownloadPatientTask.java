@@ -6,7 +6,6 @@ import com.muzima.api.context.Context;
 import com.muzima.api.context.ContextFactory;
 import com.muzima.api.model.Cohort;
 import com.muzima.api.model.CohortData;
-import com.muzima.api.model.CohortMember;
 import com.muzima.api.model.Observation;
 import com.muzima.api.model.Patient;
 import com.muzima.api.service.CohortService;
